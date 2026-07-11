@@ -1,0 +1,95 @@
+name: Mobile Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      app:
+        description: 'App to build'
+        required: true
+        default: 'user-app'
+        type: choice
+        options:
+          - user-app
+          - partner-app
+      platform:
+        description: 'Platform'
+        required: true
+        default: 'android'
+        type: choice
+        options:
+          - android
+          - ios
+
+jobs:
+  build-android:
+    name: Build Android (${{ inputs.app || 'user-app' }})
+    runs-on: ubuntu-latest
+    if: inputs.platform == 'android' || inputs.platform == ''
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          cd apps/${{ inputs.app || 'user-app' }}
+          npm ci
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v2
+
+      - name: Build Android App
+        run: |
+          cd apps/${{ inputs.app || 'user-app' }}
+          npx expo prebuild --platform android
+          cd android
+          ./gradlew assembleRelease
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: android-apk-${{ inputs.app || 'user-app' }}
+          path: apps/${{ inputs.app || 'user-app' }}/android/app/build/outputs/apk/**/*.apk
+
+  build-ios:
+    name: Build iOS (${{ inputs.app || 'user-app' }})
+    runs-on: macos-latest
+    if: inputs.platform == 'ios'
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          cd apps/${{ inputs.app || 'user-app' }}
+          npm ci
+
+      - name: Setup iOS
+        run: |
+          cd apps/${{ inputs.app || 'user-app' }}
+          npx expo prebuild --platform ios
+
+      - name: Build iOS App
+        run: |
+          cd apps/${{ inputs.app || 'user-app' }}/ios
+          xcodebuild -workspace *.xcworkspace -scheme app -configuration Release -archivePath build/*.xcarchive archive
+          xcodebuild -exportArchive -archivePath build/*.xcarchive -exportOptionsPlist ExportOptions.plist -exportPath build/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: ios-app-${{ inputs.app || 'user-app' }}
+          path: apps/${{ inputs.app || 'user-app' }}/ios/build/*.ipa

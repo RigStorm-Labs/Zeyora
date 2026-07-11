@@ -1,0 +1,38 @@
+{
+  "expo": {
+    "name": "Zeyora Partner",
+    "slug": "zeyora-partner-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#004E89"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.zeyora.partner",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Zeyora needs your location to track deliveries.",
+        "NSLocationAlwaysUsageDescription": "Zeyora needs your location to track deliveries in the background."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#004E89"
+      },
+      "package": "com.zeyora.partner",
+      "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      ["expo-location", {}]
+    ]
+  }
+}

@@ -1,0 +1,60 @@
+{
+  "name": "zeyora",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Next-generation delivery service platform",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:api\" \"npm run dev:user\" \"npm run dev:partner\" \"npm run dev:vendor\" \"npm run dev:admin\"",
+    "dev:api": "npm run dev --workspace=packages/api",
+    "dev:user": "npm run dev --workspace=apps/user-app",
+    "dev:partner": "npm run dev --workspace=apps/partner-app",
+    "dev:vendor": "npm run dev --workspace=apps/vendor-dashboard",
+    "dev:admin": "npm run dev --workspace=apps/admin-panel",
+    "build": "npm run build --workspaces",
+    "build:api": "npm run build --workspace=packages/api",
+    "build:user": "npm run build --workspace=apps/user-app",
+    "build:partner": "npm run build --workspace=apps/partner-app",
+    "build:vendor": "npm run build --workspace=apps/vendor-dashboard",
+    "build:admin": "npm run build --workspace=apps/admin-panel",
+    "test": "npm run test --workspaces --if-present",
+    "test:watch": "npm run test:watch --workspaces --if-present",
+    "lint": "eslint . --ext .ts,.tsx,.js,.jsx",
+    "lint:fix": "eslint . --ext .ts,.tsx,.js,.jsx --fix",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,css}\"",
+    "docker:build": "docker-compose build",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f",
+    "prepare": "husky install"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@typescript-eslint/eslint-plugin": "^6.15.0",
+    "@typescript-eslint/parser": "^6.15.0",
+    "concurrently": "^8.2.2",
+    "eslint": "^8.56.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-prettier": "^5.1.2",
+    "husky": "^8.0.3",
+    "lint-staged": "^15.2.0",
+    "prettier": "^3.1.1",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md,css}": [
+      "prettier --write"
+    ]
+  }
+}

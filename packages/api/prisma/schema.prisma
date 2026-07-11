@@ -1,0 +1,374 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Users model
+model User {
+  id            String    @id @default(uuid())
+  email         String?   @unique
+  phone         String?   @unique
+  passwordHash  String?
+  firstName     String
+  lastName      String
+  avatarUrl     String?
+  role          String    @default("customer")
+  status        String    @default("active")
+  emailVerified Boolean   @default(false)
+  phoneVerified Boolean   @default(false)
+  fcmToken      String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  addresses           UserAddress[]
+  orders              Order[]
+  partner             Partner?
+  vendor              Vendor?
+  wallet              Wallet?
+  loyaltyProgram      LoyaltyProgram?
+  reviews             Review[]
+  refreshTokens       RefreshToken[]
+  auditLogs           AuditLog[]
+  couponUsages        CouponUsage[]
+  transactions        Transaction[]
+  createdLoyaltyTxns  LoyaltyTransaction[] @relation("LoyaltyProgramCreator")
+  
+  @@index([email])
+  @@index([phone])
+  @@index([role])
+}
+
+// User Addresses
+model UserAddress {
+  id           String   @id @default(uuid())
+  userId       String
+  label        String
+  addressLine1 String
+  addressLine2 String?
+  city         String
+  state        String
+  postalCode   String
+  country      String   @default("India")
+  latitude     Decimal?
+  longitude    Decimal?
+  isDefault    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+}
+
+// Partners/Delivery Executives
+model Partner {
+  id               String   @id @default(uuid())
+  userId           String   @unique
+  vehicleType      String?
+  vehicleNumber    String?
+  licenseNumber    String?
+  kycStatus        String   @default("pending")
+  kycDocuments     Json     @default("{}")
+  bankDetails      Json     @default("{}")
+  currentLocation  Json?
+  isAvailable      Boolean  @default(false)
+  rating           Decimal  @default(0)
+  totalDeliveries  Int      @default(0)
+  earningsWallet   Decimal  @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orders       Order[]
+  reviews      Review[]
+  
+  @@index([userId])
+  @@index([currentLocation])
+}
+
+// Vendors
+model Vendor {
+  id                    String   @id @default(uuid())
+  userId                String   @unique
+  businessName          String
+  businessType          String
+  description           String?
+  address               String
+  latitude              Decimal?
+  longitude             Decimal?
+  operatingHours        Json     @default("{}")
+  isActive              Boolean  @default(true)
+  isOpen                Boolean  @default(true)
+  rating                Decimal  @default(0)
+  totalRatings          Int      @default(0)
+  commissionRate        Decimal  @default(15)
+  minimumOrder          Decimal  @default(0)
+  deliveryFee           Decimal  @default(0)
+  averagePreparationTime Int     @default(30)
+  bankDetails           Json     @default("{}")
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orders    Order[]
+  reviews   Review[]
+  
+  @@index([userId])
+  @@index([latitude, longitude])
+}
+
+// Categories
+model Category {
+  id          String   @id @default(uuid())
+  name        String
+  slug        String   @unique
+  description String?
+  imageUrl    String?
+  parentId    String?
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  parent   Category?  @relation("CategoryRelation", fields: [parentId], references: [id])
+  children Category[] @relation("CategoryRelation")
+}
+
+// Orders
+model Order {
+  id                     String    @id @default(uuid())
+  orderNumber            String    @unique
+  customerId             String
+  vendorId               String?
+  partnerId              String?
+  status                 String    @default("pending")
+  orderType              String    @default("food")
+  items                  Json      @default("[]")
+  subtotal               Decimal   @default(0)
+  deliveryFee            Decimal   @default(0)
+  packingFee             Decimal   @default(0)
+  tax                    Decimal   @default(0)
+  discount               Decimal   @default(0)
+  couponCode             String?
+  total                  Decimal   @default(0)
+  paymentMethod          String?
+  paymentStatus          String    @default("pending")
+  deliveryAddress       Json?
+  pickupAddress         Json?
+  specialInstructions   String?
+  promoCode             String?
+  promoDiscount         Decimal   @default(0)
+  estimatedDelivery     DateTime?
+  actualDelivery         DateTime?
+  rating                 Int?
+  review                 String?
+  cancellationReason     String?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  customer             User                  @relation(fields: [customerId], references: [id])
+  vendor               Vendor?               @relation(fields: [vendorId], references: [id])
+  partner              Partner?              @relation(fields: [partnerId], references: [id])
+  statusHistory        OrderStatusHistory[]
+  transactions         Transaction[]
+  reviews              Review[]
+  couponUsages        CouponUsage[]
+  loyaltyTransactions  LoyaltyTransaction[]
+  
+  @@index([customerId])
+  @@index([vendorId])
+  @@index([partnerId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+// Order Status History
+model OrderStatusHistory {
+  id        String   @id @default(uuid())
+  orderId   String
+  status    String
+  notes     String?
+  changedBy String?
+  createdAt DateTime @default(now())
+
+  order    Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  changer  User? @relation(fields: [changedBy], references: [id])
+  
+  @@index([orderId])
+}
+
+// Transactions
+model Transaction {
+  id                    String   @id @default(uuid())
+  orderId               String?
+  userId                String?
+  type                  String
+  amount                Decimal
+  currency              String   @default("INR")
+  paymentMethod         String?
+  paymentGateway        String?
+  gatewayTransactionId  String?
+  status                String   @default("pending")
+  metadata              Json     @default("{}")
+  createdAt             DateTime @default(now())
+
+  order Order? @relation(fields: [orderId], references: [id])
+  user  User?  @relation(fields: [userId], references: [id])
+  
+  @@index([userId])
+  @@index([orderId])
+}
+
+// Wallets
+model Wallet {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  balance   Decimal  @default(0)
+  currency  String   @default("INR")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions WalletTransaction[]
+}
+
+// Wallet Transactions
+model WalletTransaction {
+  id             String   @id @default(uuid())
+  walletId       String
+  type           String
+  amount         Decimal
+  balanceBefore  Decimal?
+  balanceAfter   Decimal?
+  description    String?
+  referenceId    String?
+  createdAt      DateTime @default(now())
+
+  wallet Wallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  
+  @@index([walletId])
+}
+
+// Loyalty Programs
+model LoyaltyProgram {
+  id             String   @id @default(uuid())
+  userId         String   @unique
+  points         Int      @default(0)
+  lifetimePoints Int      @default(0)
+  tier           String   @default("bronze")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions LoyaltyTransaction[]
+}
+
+// Loyalty Transactions
+model LoyaltyTransaction {
+  id          String   @id @default(uuid())
+  programId   String
+  type        String
+  points      Int
+  description String?
+  orderId     String?
+  createdAt   DateTime @default(now())
+
+  program LoyaltyProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
+  order   Order?          @relation(fields: [orderId], references: [id])
+  
+  @@index([programId])
+}
+
+// Coupons
+model Coupon {
+  id              String   @id @default(uuid())
+  code            String   @unique
+  description     String?
+  discountType    String   @default("percentage")
+  discountValue   Decimal
+  minimumOrder    Decimal  @default(0)
+  maximumDiscount Decimal?
+  usageLimit      Int?
+  usedCount       Int      @default(0)
+  validFrom       DateTime?
+  validUntil      DateTime?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+
+  usages CouponUsage[]
+  
+  @@index([code])
+}
+
+// Coupon Usages
+model CouponUsage {
+  id             String   @id @default(uuid())
+  couponId       String
+  userId         String
+  orderId        String?
+  discountAmount Decimal?
+  createdAt      DateTime @default(now())
+
+  coupon Coupon @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  order  Order? @relation(fields: [orderId], references: [id])
+  
+  @@index([couponId])
+  @@index([userId])
+}
+
+// Reviews
+model Review {
+  id        String   @id @default(uuid())
+  orderId   String
+  userId    String
+  vendorId  String?
+  partnerId String?
+  rating    Int
+  review    String?
+  images    Json     @default("[]")
+  isPublic  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id])
+  vendor  Vendor? @relation(fields: [vendorId], references: [id])
+  partner Partner? @relation(fields: [partnerId], references: [id])
+}
+
+// Refresh Tokens
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([token])
+}
+
+// Audit Logs
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String?
+  action     String
+  entityType String?
+  entityId   String?
+  oldValue   Json?
+  newValue   Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+  
+  @@index([userId])
+  @@index([createdAt])
+}
